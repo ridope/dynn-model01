@@ -7,7 +7,7 @@ from torch.utils.data import DataLoader
 from torchvision.transforms import transforms
 from ptflops import get_model_complexity_info
 
-from model import *
+from model import DyNNet
 from data_management import NoisyImagesDataset, DataSampler
 from train import fit_model
 from transforms import AdditiveWhiteGaussianNoise, RandomHorizontalFlip, RandomVerticalFlip, RandomRot90

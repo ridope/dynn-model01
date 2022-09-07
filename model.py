@@ -90,8 +90,6 @@ class DCN(nn.Module):
 
         return out
 
-# ==============================================================================#
-
 # SadNet implementation
 
 import torch

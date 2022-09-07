@@ -1,0 +1,33 @@
+name: dynnet
+
+channels:
+  - defaults
+  - conda-forge
+
+dependencies:
+  - python=3.9
+  - cudatoolkit
+  - pip
+  - numpy
+  - scipy
+  - pillow
+  - yaml
+  - pyyaml
+  - matplotlib
+  - jupyter
+  - notebook
+  - tensorboardx
+  - tensorboard
+  - protobuf
+  - tqdm
+  - joblib
+  - glob2
+  - scikit-image
+  - psutil
+  - pytorch
+  - torchvision
+  - ptflops
+  - pytorch-msssim
+
+
+

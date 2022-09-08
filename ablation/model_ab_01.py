@@ -1,3 +1,7 @@
+# Ablation study model 01
+# Activation function
+# All activation functions changed to LeakyRelu instead of PReLu
+
 
 import torch
 import torch.nn as nn
@@ -340,7 +344,7 @@ class DownsampleBlock(nn.Module):
     def __init__(self, in_channels, out_channels):
         super(DownsampleBlock, self).__init__()
         self.conv = nn.Conv2d(in_channels, out_channels, kernel_size=2, stride=2)
-        self.actv = nn.PReLU(out_channels)
+        self.actv = nn.(out_channels)
 
     def forward(self, x):
         return self.actv(self.conv(x))
@@ -352,13 +356,12 @@ class UpsampleBlock(nn.Module):
 
         self.conv = nn.Conv2d(in_channels + cat_channels, out_channels, 3, padding=1)
         self.conv_t = nn.ConvTranspose2d(in_channels, in_channels, 2, stride=2)
-        self.actv = nn.PReLU(out_channels)
-        self.actv_t = nn.PReLU(in_channels)
+        self.lrelu = nn.LeakyReLU(negative_slope=0.2, inplace=True)
 
     def forward(self, x):
         upsample, concat = x
-        upsample = self.actv_t(self.conv_t(upsample))
-        return self.actv(self.conv(torch.cat([concat, upsample], 1)))
+        upsample = self.lrelu(self.conv_t(upsample))
+        return self.lrelu(self.conv(torch.cat([concat, upsample], 1)))
 
 
 class InputBlock(nn.Module):
@@ -366,13 +369,11 @@ class InputBlock(nn.Module):
         super(InputBlock, self).__init__()
         self.conv_1 = nn.Conv2d(in_channels, out_channels, 3, padding=1)
         self.conv_2 = nn.Conv2d(out_channels, out_channels, 3, padding=1)
-
-        self.actv_1 = nn.PReLU(out_channels)
-        self.actv_2 = nn.PReLU(out_channels)
+        self.lrelu = nn.LeakyReLU(negative_slope=0.2, inplace=True)
 
     def forward(self, x):
-        x = self.actv_1(self.conv_1(x))
-        return self.actv_2(self.conv_2(x))
+        x = self.lrelu(self.conv_1(x))
+        return self.lrelu(self.conv_2(x))
 
 
 class OutputBlock(nn.Module):
@@ -380,13 +381,12 @@ class OutputBlock(nn.Module):
         super(OutputBlock, self).__init__()
         self.conv_1 = nn.Conv2d(in_channels, in_channels, 3, padding=1)
         self.conv_2 = nn.Conv2d(in_channels, out_channels, 3, padding=1)
+        self.lrelu = nn.LeakyReLU(negative_slope=0.2, inplace=True)
 
-        self.actv_1 = nn.PReLU(in_channels)
-        self.actv_2 = nn.PReLU(out_channels)
 
     def forward(self, x):
-        x = self.actv_1(self.conv_1(x))
-        return self.actv_2(self.conv_2(x))
+        x = self.lrelu(self.conv_1(x))
+        return self.lrelu(self.conv_2(x))
 
 
 class DenoisingBlock(nn.Module):
@@ -397,22 +397,19 @@ class DenoisingBlock(nn.Module):
         self.conv_2 = nn.Conv2d(in_channels + 2 * inner_channels, inner_channels, 3, padding=1)
         self.conv_3 = nn.Conv2d(in_channels + 3 * inner_channels, out_channels, 3, padding=1)
 
-        self.actv_0 = nn.PReLU(inner_channels)
-        self.actv_1 = nn.PReLU(inner_channels)
-        self.actv_2 = nn.PReLU(inner_channels)
-        self.actv_3 = nn.PReLU(out_channels)
+        self.lrelu = nn.LeakyReLU(negative_slope=0.2, inplace=True)
 
     def forward(self, x):
-        out_0 = self.actv_0(self.conv_0(x))
+        out_0 = self.lrelu(self.conv_0(x))
 
         out_0 = torch.cat([x, out_0], 1)
-        out_1 = self.actv_1(self.conv_1(out_0))
+        out_1 = self.lrelu(self.conv_1(out_0))
 
         out_1 = torch.cat([out_0, out_1], 1)
-        out_2 = self.actv_2(self.conv_2(out_1))
+        out_2 = self.lrelu(self.conv_2(out_1))
 
         out_2 = torch.cat([out_1, out_2], 1)
-        out_3 = self.actv_3(self.conv_3(out_2))
+        out_3 = self.lrelu(self.conv_3(out_2))
 
         return out_3 + x
 
@@ -517,4 +514,3 @@ class DyNNet(nn.Module):
         dconv0 = self.rsab_0(out_6, L0_offset)
 
         return self.output_block(dconv0) + inputs
-

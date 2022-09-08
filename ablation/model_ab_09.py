@@ -1,3 +1,7 @@
+# Ablation study model 09
+# (Architecture)
+# Offset block origin changed to first convolutional block in each level instead of the denoising block output
+
 
 import torch
 import torch.nn as nn
@@ -493,27 +497,27 @@ class DyNNet(nn.Module):
         out_2 = self.block_2_1(out_2)
 
         out_3 = self.down_2(out_2)  # (Bottleneck)
+        L3_offset = self.offset_3(out_3, None)
         out_3 = self.block_3_0(out_3)
         out_3 = self.block_3_1(out_3)
-        L3_offset = self.offset_3(out_3, None)
         dconv3 = self.rsab_3(out_3, L3_offset)
 
         out_4 = self.up_2([dconv3, out_2])  # Level 2
+        L2_offset = self.offset_2(out_4, L3_offset)
         out_4 = self.block_2_2(out_4)
         out_4 = self.block_2_3(out_4)
-        L2_offset = self.offset_2(out_4, L3_offset)
         dconv2 = self.rsab_2(out_4, L2_offset)
 
         out_5 = self.up_1([dconv2, out_1])  # Level 1
+        L1_offset = self.offset_1(out_5, L2_offset)
         out_5 = self.block_1_2(out_5)
         out_5 = self.block_1_3(out_5)
-        L1_offset = self.offset_1(out_5, L2_offset)
         dconv1 = self.rsab_1(out_5, L1_offset)
 
         out_6 = self.up_0([dconv1, out_0])  # Level 0
+        L0_offset = self.offset_0(out_6, L1_offset)
         out_6 = self.block_0_2(out_6)
         out_6 = self.block_0_3(out_6)
-        L0_offset = self.offset_0(out_6, L1_offset)
         dconv0 = self.rsab_0(out_6, L0_offset)
 
         return self.output_block(dconv0) + inputs

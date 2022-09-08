@@ -1,3 +1,7 @@
+# Ablation study model 05
+# Activation function
+# All activation functions changed to ReLu instead of LeakyReLu and PreLu
+
 
 import torch
 import torch.nn as nn
@@ -111,13 +115,13 @@ class ResBlock(nn.Module):
         self.conv1 = nn.Conv2d(output_channel, output_channel, 3, 1, 1)
         self.conv2 = nn.Conv2d(output_channel, output_channel, 3, 1, 1)
 
-        self.lrelu = nn.LeakyReLU(negative_slope=0.2, inplace=True)
+        self.relu = nn.ReLU()
         self.initialize_weights()
 
     def forward(self, x):
         if self.in_channel != self.out_channel:
             x = self.conv0(x)
-        conv1 = self.lrelu(self.conv1(x))
+        conv1 = self.relu(self.conv1(x))
         conv2 = self.conv2(conv1)
         out = x + conv2
         return out
@@ -142,13 +146,13 @@ class RSABlock(nn.Module):
                            extra_offset_mask=True, offset_in_channel=offset_channel)
         self.conv1 = nn.Conv2d(output_channel, output_channel, 3, 1, 1)
 
-        self.lrelu = nn.LeakyReLU(negative_slope=0.2, inplace=True)
+        self.relu = nn.ReLU()
         self.initialize_weights()
 
     def forward(self, x, offset):
         if self.in_channel != self.out_channel:
             x = self.conv0(x)
-        fea = self.lrelu(self.dcnpack([x, offset]))
+        fea = self.relu(self.dcnpack([x, offset]))
         out = self.conv1(fea) + x
         return out
 
@@ -169,15 +173,15 @@ class OffsetBlock(nn.Module):
             self.offset_conv2 = nn.Conv2d(offset_channel * 2, offset_channel, 3, 1, 1)  # concat for offset
         self.offset_conv3 = nn.Conv2d(offset_channel, offset_channel, 3, 1, 1)
 
-        self.lrelu = nn.LeakyReLU(negative_slope=0.2, inplace=True)
+        self.relu = nn.ReLU()
         self.initialize_weights()
 
     def forward(self, x, last_offset=None):
-        offset = self.lrelu(self.offset_conv1(x))
+        offset = self.relu(self.offset_conv1(x))
         if last_offset is not None:
             last_offset = F.interpolate(last_offset, scale_factor=2, mode='bilinear', align_corners=False)
-            offset = self.lrelu(self.offset_conv2(torch.cat([offset, last_offset * 2], dim=1)))
-        offset = self.lrelu(self.offset_conv3(offset))
+            offset = self.relu(self.offset_conv2(torch.cat([offset, last_offset * 2], dim=1)))
+        offset = self.relu(self.offset_conv3(offset))
         return offset
 
     def initialize_weights(self):
@@ -204,15 +208,15 @@ class ContextBlock(nn.Module):
             self.conv4 = nn.Conv2d(output_channel, output_channel, 3, 1, 4, 4)
         self.fusion = nn.Conv2d(4 * output_channel, input_channel, 1, 1)
 
-        self.lrelu = nn.LeakyReLU(negative_slope=0.2, inplace=True)
+        self.relu = nn.ReLU()
         self.initialize_weights()
 
     def forward(self, x):
         x_reduce = self.conv0(x)
-        conv1 = self.lrelu(self.conv1(x_reduce))
-        conv2 = self.lrelu(self.conv2(x_reduce))
-        conv3 = self.lrelu(self.conv3(x_reduce))
-        conv4 = self.lrelu(self.conv4(x_reduce))
+        conv1 = self.relu(self.conv1(x_reduce))
+        conv2 = self.relu(self.conv2(x_reduce))
+        conv3 = self.relu(self.conv3(x_reduce))
+        conv4 = self.relu(self.conv4(x_reduce))
         out = torch.cat([conv1, conv2, conv3, conv4], 1)
         out = self.fusion(out) + x
         return out
@@ -258,15 +262,15 @@ class SADNET(nn.Module):
 
         self.out = nn.Conv2d(n_channel, output_channel, 3, 1, 1)
 
-        self.lrelu = nn.LeakyReLU(negative_slope=0.2, inplace=True)
+        self.relu = nn.ReLU()
 
     def forward(self, x):
         conv1 = self.res1(x)
-        pool1 = self.lrelu(self.down1(conv1))
+        pool1 = self.relu(self.down1(conv1))
         conv2 = self.res2(pool1)
-        pool2 = self.lrelu(self.down2(conv2))
+        pool2 = self.relu(self.down2(conv2))
         conv3 = self.res3(pool2)
-        pool3 = self.lrelu(self.down3(conv3))
+        pool3 = self.relu(self.down3(conv3))
         conv4 = self.res4(pool3)
         conv4 = self.context(conv4)
 
@@ -340,10 +344,10 @@ class DownsampleBlock(nn.Module):
     def __init__(self, in_channels, out_channels):
         super(DownsampleBlock, self).__init__()
         self.conv = nn.Conv2d(in_channels, out_channels, kernel_size=2, stride=2)
-        self.actv = nn.PReLU(out_channels)
+        self.relu = nn.ReLU()
 
     def forward(self, x):
-        return self.actv(self.conv(x))
+        return self.relu(self.conv(x))
 
 
 class UpsampleBlock(nn.Module):
@@ -352,13 +356,12 @@ class UpsampleBlock(nn.Module):
 
         self.conv = nn.Conv2d(in_channels + cat_channels, out_channels, 3, padding=1)
         self.conv_t = nn.ConvTranspose2d(in_channels, in_channels, 2, stride=2)
-        self.actv = nn.PReLU(out_channels)
-        self.actv_t = nn.PReLU(in_channels)
+        self.relu = nn.ReLU()
 
     def forward(self, x):
         upsample, concat = x
-        upsample = self.actv_t(self.conv_t(upsample))
-        return self.actv(self.conv(torch.cat([concat, upsample], 1)))
+        upsample = self.relu(self.conv_t(upsample))
+        return self.relu(self.conv(torch.cat([concat, upsample], 1)))
 
 
 class InputBlock(nn.Module):
@@ -367,12 +370,11 @@ class InputBlock(nn.Module):
         self.conv_1 = nn.Conv2d(in_channels, out_channels, 3, padding=1)
         self.conv_2 = nn.Conv2d(out_channels, out_channels, 3, padding=1)
 
-        self.actv_1 = nn.PReLU(out_channels)
-        self.actv_2 = nn.PReLU(out_channels)
+        self.relu = nn.ReLU()
 
     def forward(self, x):
-        x = self.actv_1(self.conv_1(x))
-        return self.actv_2(self.conv_2(x))
+        x = self.relu(self.conv_1(x))
+        return self.relu(self.conv_2(x))
 
 
 class OutputBlock(nn.Module):
@@ -381,12 +383,11 @@ class OutputBlock(nn.Module):
         self.conv_1 = nn.Conv2d(in_channels, in_channels, 3, padding=1)
         self.conv_2 = nn.Conv2d(in_channels, out_channels, 3, padding=1)
 
-        self.actv_1 = nn.PReLU(in_channels)
-        self.actv_2 = nn.PReLU(out_channels)
+        self.relu = nn.ReLU()
 
     def forward(self, x):
-        x = self.actv_1(self.conv_1(x))
-        return self.actv_2(self.conv_2(x))
+        x = self.relu(self.conv_1(x))
+        return self.relu(self.conv_2(x))
 
 
 class DenoisingBlock(nn.Module):
@@ -397,22 +398,19 @@ class DenoisingBlock(nn.Module):
         self.conv_2 = nn.Conv2d(in_channels + 2 * inner_channels, inner_channels, 3, padding=1)
         self.conv_3 = nn.Conv2d(in_channels + 3 * inner_channels, out_channels, 3, padding=1)
 
-        self.actv_0 = nn.PReLU(inner_channels)
-        self.actv_1 = nn.PReLU(inner_channels)
-        self.actv_2 = nn.PReLU(inner_channels)
-        self.actv_3 = nn.PReLU(out_channels)
+        self.relu = nn.ReLU()
 
     def forward(self, x):
-        out_0 = self.actv_0(self.conv_0(x))
+        out_0 = self.relu(self.conv_0(x))
 
         out_0 = torch.cat([x, out_0], 1)
-        out_1 = self.actv_1(self.conv_1(out_0))
+        out_1 = self.relu(self.conv_1(out_0))
 
         out_1 = torch.cat([out_0, out_1], 1)
-        out_2 = self.actv_2(self.conv_2(out_1))
+        out_2 = self.relu(self.conv_2(out_1))
 
         out_2 = torch.cat([out_1, out_2], 1)
-        out_3 = self.actv_3(self.conv_3(out_2))
+        out_3 = self.relu(self.conv_3(out_2))
 
         return out_3 + x
 

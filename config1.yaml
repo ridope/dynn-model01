@@ -16,7 +16,7 @@ train:
   multi gpu: false
   workers: 0
   dataset path: 'Datasets/DIV2K_train_HR'
-  checkpoint path: 'Checkpoints'
+  checkpoint path: 'Checkpoints-ab06'
 val:
   noise levels:
     - 10

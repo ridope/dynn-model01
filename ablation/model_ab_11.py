@@ -1,8 +1,5 @@
-# Ablation study model 06
-# (Architecture)
-# Denoising blocks reduced by 1 in each stage of encoder / decoder structure
-# filters 0 changed to 32 instead of 128 to reduce model complexity
-# TO-DO compare results with model_ab_11.py
+# n channels size changed to 32 in order to avoid offset mean problem
+# Reducing model complexity
 
 import torch
 import torch.nn as nn
@@ -95,7 +92,7 @@ class DCN(nn.Module):
 
         return out
 
-# SadNet implementation
+# RSABlock and Offset block from SADNET implementation
 
 import torch
 import torch.nn as nn
@@ -104,36 +101,6 @@ import torch.nn.functional as F
 import numpy as np
 from distutils.version import LooseVersion
 import torchvision
-
-class ResBlock(nn.Module):
-
-    def __init__(self, input_channel=32, output_channel=32):
-        super().__init__()
-        self.in_channel = input_channel
-        self.out_channel = output_channel
-        if self.in_channel != self.out_channel:
-            self.conv0 = nn.Conv2d(input_channel, output_channel, 1, 1)
-        self.conv1 = nn.Conv2d(output_channel, output_channel, 3, 1, 1)
-        self.conv2 = nn.Conv2d(output_channel, output_channel, 3, 1, 1)
-
-        self.lrelu = nn.LeakyReLU(negative_slope=0.2, inplace=True)
-        self.initialize_weights()
-
-    def forward(self, x):
-        if self.in_channel != self.out_channel:
-            x = self.conv0(x)
-        conv1 = self.lrelu(self.conv1(x))
-        conv2 = self.conv2(conv1)
-        out = x + conv2
-        return out
-
-    def initialize_weights(self):
-        for m in self.modules():
-            if isinstance(m, nn.Conv2d):
-                torch.nn.init.xavier_uniform_(m.weight.data)
-                if m.bias is not None:
-                    m.bias.data.zero_()
-
 
 class RSABlock(nn.Module):
 
@@ -191,6 +158,7 @@ class OffsetBlock(nn.Module):
                 torch.nn.init.xavier_uniform_(m.weight.data)
                 if m.bias is not None:
                     m.bias.data.zero_()
+
 
 # ==============================================================================
                             # RDUNet implementation
@@ -302,9 +270,6 @@ class DenoisingBlock(nn.Module):
 
 
 class DyNNet(nn.Module):
-    """
-    Residual-Dense U-net for image denoising.
-    """
 
     def __init__(self, **kwargs):
         super().__init__()
@@ -320,18 +285,22 @@ class DyNNet(nn.Module):
         # Level 0:
         self.input_block = InputBlock(channels, filters_0)
         self.block_0_0 = DenoisingBlock(filters_0, filters_0 // 2, filters_0)
+        self.block_0_1 = DenoisingBlock(filters_0, filters_0 // 2, filters_0)
         self.down_0 = DownsampleBlock(filters_0, filters_1)
 
         # Level 1:
         self.block_1_0 = DenoisingBlock(filters_1, filters_1 // 2, filters_1)
+        self.block_1_1 = DenoisingBlock(filters_1, filters_1 // 2, filters_1)
         self.down_1 = DownsampleBlock(filters_1, filters_2)
 
         # Level 2:
         self.block_2_0 = DenoisingBlock(filters_2, filters_2 // 2, filters_2)
+        self.block_2_1 = DenoisingBlock(filters_2, filters_2 // 2, filters_2)
         self.down_2 = DownsampleBlock(filters_2, filters_3)
 
         # (Bottleneck)
         self.block_3_0 = DenoisingBlock(filters_3, filters_3 // 2, filters_3)
+        self.block_3_1 = DenoisingBlock(filters_3, filters_3 // 2, filters_3)
         self.offset_3 = OffsetBlock(filters_3, offset_channel, False)
         self.rsab_3 = RSABlock(filters_3, filters_3, offset_channel)
 
@@ -339,18 +308,21 @@ class DyNNet(nn.Module):
         # Level 2:
         self.up_2 = UpsampleBlock(filters_3, filters_2, filters_2)
         self.block_2_2 = DenoisingBlock(filters_2, filters_2 // 2, filters_2)
+        self.block_2_3 = DenoisingBlock(filters_2, filters_2 // 2, filters_2)
         self.offset_2 = OffsetBlock(filters_2, offset_channel, True)
         self.rsab_2 = RSABlock(filters_2, filters_2, offset_channel)
 
         # Level 1:
         self.up_1 = UpsampleBlock(filters_2, filters_1, filters_1)
         self.block_1_2 = DenoisingBlock(filters_1, filters_1 // 2, filters_1)
+        self.block_1_3 = DenoisingBlock(filters_1, filters_1 // 2, filters_1)
         self.offset_1 = OffsetBlock(filters_1, offset_channel, True)
         self.rsab_1 = RSABlock(filters_1, filters_1, offset_channel)
 
         # Level 0:
         self.up_0 = UpsampleBlock(filters_1, filters_0, filters_0)
         self.block_0_2 = DenoisingBlock(filters_0, filters_0 // 2, filters_0)
+        self.block_0_3 = DenoisingBlock(filters_0, filters_0 // 2, filters_0)
         self.offset_0 = OffsetBlock(filters_0, offset_channel, True)
         self.rsab_0 = RSABlock(filters_0, filters_0, offset_channel)
 
@@ -359,32 +331,38 @@ class DyNNet(nn.Module):
     def forward(self, inputs):
         out_0 = self.input_block(inputs)  # Level 0
         out_0 = self.block_0_0(out_0)
+        out_0 = self.block_0_1(out_0)
 
         out_1 = self.down_0(out_0)  # Level 1
         out_1 = self.block_1_0(out_1)
+        out_1 = self.block_1_1(out_1)
 
         out_2 = self.down_1(out_1)  # Level 2
         out_2 = self.block_2_0(out_2)
+        out_2 = self.block_2_1(out_2)
 
         out_3 = self.down_2(out_2)  # (Bottleneck)
         out_3 = self.block_3_0(out_3)
+        out_3 = self.block_3_1(out_3)
         L3_offset = self.offset_3(out_3, None)
         dconv3 = self.rsab_3(out_3, L3_offset)
 
         out_4 = self.up_2([dconv3, out_2])  # Level 2
         out_4 = self.block_2_2(out_4)
+        out_4 = self.block_2_3(out_4)
         L2_offset = self.offset_2(out_4, L3_offset)
         dconv2 = self.rsab_2(out_4, L2_offset)
 
         out_5 = self.up_1([dconv2, out_1])  # Level 1
         out_5 = self.block_1_2(out_5)
+        out_5 = self.block_1_3(out_5)
         L1_offset = self.offset_1(out_5, L2_offset)
         dconv1 = self.rsab_1(out_5, L1_offset)
 
         out_6 = self.up_0([dconv1, out_0])  # Level 0
         out_6 = self.block_0_2(out_6)
+        out_6 = self.block_0_3(out_6)
         L0_offset = self.offset_0(out_6, L1_offset)
         dconv0 = self.rsab_0(out_6, L0_offset)
 
         return self.output_block(dconv0) + inputs
-

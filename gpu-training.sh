@@ -4,7 +4,7 @@
 #SBATCH --job-name=dynn-model01
 #SBATCH --output=/aschroed/dyNN-model01/out.txt
 #SBATCH --error=/aschroed/dyNN-model01/err.txt
-#SBATCH -w crn22
+#SBATCH -w crn20
 #SBATCH --ntasks=1
 #SBATCH --gpus-per-task=1
 #SBATCH --gres=gpu:1

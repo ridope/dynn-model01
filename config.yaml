@@ -10,7 +10,7 @@ train:
   weight decay: 1.e-5
   scheduler gamma: 0.5
   scheduler step: 3
-  epochs: 200
+  epochs: 50
   dataset splits: 5
   device: cuda:0
   multi gpu: false

@@ -15,7 +15,7 @@ from utils import set_seed
 
 
 def main():
-    with open('config.yaml', 'r') as stream:                # Load YAML configuration file.
+    with open('config2.yaml', 'r') as stream:                # Load YAML configuration file.
         config = yaml.safe_load(stream)
 
     model_params = config['model']

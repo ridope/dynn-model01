@@ -423,7 +423,7 @@ class DyNNet(nn.Module):
         super().__init__()
 
         channels = 3
-        filters_0 = 128
+        filters_0 = 32
         filters_1 = 2 * filters_0
         filters_2 = 4 * filters_0
         filters_3 = 8 * filters_0

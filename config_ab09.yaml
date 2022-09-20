@@ -1,0 +1,39 @@
+---
+model:
+  base filters: 32
+  channels: 3
+train:
+  noise level: 50
+  patch size: 64
+  batch size: 16
+  learning rate: 1.e-4
+  weight decay: 1.e-5
+  scheduler gamma: 0.5
+  scheduler step: 3
+  epochs: 20
+  dataset splits: 10
+  device: cuda:0
+  multi gpu: false
+  workers: 0
+  dataset path: 'Datasets/DIV2K_train_HR'
+  checkpoint path: 'Checkpoints-ab09'
+val:
+  noise levels:
+    - 50
+  patch size: 256
+  batch size: 8
+  frequency: 1
+  workers: 0
+  dataset path: 'Datasets/DIV2K_valid_HR'
+test:
+  noise levels:
+    - 10
+    - 30
+    - 50
+  device: cuda:0
+  padding: true
+  dataset path: 'Datasets/Test'
+  results path: 'Results'
+  pretrained models path: 'Pretrained'
+  save images: true
+...
